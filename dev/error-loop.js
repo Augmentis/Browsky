@@ -55,7 +55,7 @@ async function getTargets() {
 
 function connectTarget(wsUrl) {
   return new Promise((resolve, reject) => {
-    const ws = new (require('ws'))(wsUrl);
+    const ws = new (require(WS_PATH))(wsUrl);
     const pending = new Map();
     let seq = 1;
 
@@ -235,10 +235,13 @@ function runClaudeFix(err) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+// Resolve ws from server/node_modules — that's where install.sh puts it
+const WS_PATH = path.join(PROJECT_DIR, 'server', 'node_modules', 'ws');
+
 async function main() {
-  try { require('ws'); } catch {
-    console.log('Installing ws...');
-    execSync('npm install ws', { cwd: path.join(PROJECT_DIR, 'server'), stdio: 'inherit' });
+  if (!fs.existsSync(WS_PATH)) {
+    console.log('Installing server dependencies...');
+    execSync('npm install', { cwd: path.join(PROJECT_DIR, 'server'), stdio: 'inherit' });
   }
 
   console.log(`\nBrowsky Dev — error feedback loop`);
