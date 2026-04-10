@@ -38,6 +38,11 @@ chrome.runtime.onMessage.addListener((msg) => {
 
 function handleServerMessage(data) {
   switch (data.type) {
+    case 'server_connected':
+      if (data.ok) { setConnected(true); refreshView(); }
+      else { statusText.textContent = 'Server failed to start'; }
+      break;
+
     case 'models':
       availableModels = data.models || [];
       break;
@@ -74,15 +79,12 @@ function setConnected(state) {
   }
 }
 
-// Poll until background says we're connected
-function waitForConnection() {
-  chrome.runtime.sendMessage({ source: 'extension', data: { type: 'ping' } }, (res) => {
-    if (chrome.runtime.lastError || !res?.ok) {
-      setTimeout(waitForConnection, 600);
-    } else {
-      setConnected(true);
-      refreshView();
-    }
+// One-shot: tell background the UI is open; it will connect and reply via server_connected
+function notifyReady() {
+  chrome.runtime.sendMessage({ source: 'ui_ready' }, (res) => {
+    // If background already has a live connection it responds synchronously
+    if (res?.ok) { setConnected(true); refreshView(); }
+    // Otherwise wait for the async server_connected message (handled in handleServerMessage)
   });
 }
 
@@ -482,5 +484,5 @@ toggleViewBtn.addEventListener('click', async () => {
   toggleViewBtn.title = viewMode === 'sidebar' ? 'Switch to popup' : 'Switch to sidebar';
 
   setConnected(false);
-  waitForConnection();
+  notifyReady();
 })();

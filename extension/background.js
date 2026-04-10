@@ -4,14 +4,22 @@ const NATIVE_HOST = 'com.augmentis.browsky';
 let ws = null;
 let launching = false;
 
+// Cache viewMode so icon click handler has no async work before sidePanel.open()
+let cachedViewMode = 'sidebar';
+chrome.storage.local.get({ viewMode: 'sidebar' }).then(({ viewMode }) => {
+  cachedViewMode = viewMode;
+});
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.viewMode) cachedViewMode = changes.viewMode.newValue;
+});
+
 // ── Icon click ────────────────────────────────────────────────────────────────
 
-chrome.action.onClicked.addListener(async (tab) => {
-  await ensureConnection();
-
-  const { viewMode } = await chrome.storage.local.get({ viewMode: 'sidebar' });
-  if (viewMode === 'sidebar') {
-    await chrome.sidePanel.open({ windowId: tab.windowId });
+chrome.action.onClicked.addListener((tab) => {
+  // sidePanel.open() MUST be called synchronously in the click handler —
+  // any await before it breaks the user gesture context.
+  if (cachedViewMode === 'sidebar') {
+    chrome.sidePanel.open({ windowId: tab.windowId });
   } else {
     chrome.windows.create({
       url: chrome.runtime.getURL('popup.html'),
@@ -21,6 +29,9 @@ chrome.action.onClicked.addListener(async (tab) => {
       focused: true,
     });
   }
+
+  // Start server in background — non-blocking
+  ensureConnection();
 });
 
 // ── WebSocket management ──────────────────────────────────────────────────────
@@ -93,16 +104,24 @@ function launchServer() {
 // ── Message relay from sidebar / popup → server ───────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  // Sidebar loaded — connect if needed and notify it when ready
+  if (msg.source === 'ui_ready') {
+    ensureConnection().then(() => {
+      const ok = ws && ws.readyState === WebSocket.OPEN;
+      chrome.runtime.sendMessage({ source: 'server', data: { type: 'server_connected', ok } })
+        .catch(() => {});
+      sendResponse({ ok });
+    });
+    return true;
+  }
+
   if (msg.source !== 'extension') return false;
 
-  ensureConnection().then(() => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(msg.data));
-      sendResponse({ ok: true });
-    } else {
-      sendResponse({ ok: false, error: 'No server connection' });
-    }
-  });
-
-  return true; // async response
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg.data));
+    sendResponse({ ok: true });
+  } else {
+    sendResponse({ ok: false, error: 'No server connection' });
+  }
+  return true;
 });
