@@ -1,0 +1,6 @@
+{
+  "name": "Browsky",
+  "description": "Chrome extension with a local WebSocket server, supporting Claude CLI and Ollama sessions",
+  "sourceDirs": ["extension", "server", "native-host"],
+  "cdpPort": 9222
+}
