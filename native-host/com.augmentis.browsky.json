@@ -1,0 +1,7 @@
+{
+  "name": "com.augmentis.browsky",
+  "description": "Browsky server launcher",
+  "path": "LAUNCHER_PATH",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://EXTENSION_ID/"]
+}

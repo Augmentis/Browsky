@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Browsky",
+  "version": "0.1.0",
+  "description": "AI chat sidebar — Claude and local Ollama models",
+  "permissions": ["sidePanel", "nativeMessaging", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "action": {
+    "default_title": "Open Browsky"
+  }
+}
