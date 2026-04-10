@@ -55,8 +55,12 @@ Browsky/
 │   └── com.augmentis.browsky.json
 │
 ├── install.sh          # registers native host, installs server deps
-├── SPEC.md             # full technical specification
-└── TODO.md             # implementation checklist
+└── docs/
+    ├── SPEC.md         # full technical specification
+    ├── TODO.md         # implementation checklist
+    ├── DEVELOPER.md    # dev workflow guide
+    ├── CLAUDE.md       # instructions for Claude sessions
+    └── HOW-IT-WORKS.md # error feedback loop explained
 ```
 
 ## Setup
