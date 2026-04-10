@@ -5,3 +5,5 @@ node_modules/
 dist/
 .vscode/
 *.pem
+dev/.chrome-dev-profile/
+dev/.claude-session-id
