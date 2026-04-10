@@ -10,17 +10,26 @@ A Chrome extension that brings an AI chat sidebar to any webpage. Supports multi
 - Streaming responses
 - Claude-inspired UI
 
-## Architecture
+## How it works
+
+Browsky has three parts:
+
+**`extension/`** — the Chrome UI (sidebar, popup, session tabs). It can't talk to AI models directly because Chrome's sandbox blocks extensions from making arbitrary network calls or spawning processes. So it connects to a local server over WebSocket instead.
+
+**`server/`** — a Node.js app running locally on your machine. This is the brain: it receives messages from the extension, either spawns `claude -p` as a subprocess (for Claude sessions) or calls Ollama's API (for local models), and streams responses back. It starts once and keeps running in the background.
+
+**`native-host/`** — a tiny one-job script whose only purpose is to start the server. Because extensions can't spawn processes, Chrome has one exception: pre-registered scripts called native messaging hosts. On icon click, the extension asks Chrome to launch `launcher.js`, which checks if the server is already running and starts it if not, then exits. After that the extension talks directly to the server — the native host is never involved again.
 
 ```
-Chrome Extension (sidebar/popup UI)
-        ↕  WebSocket  (ws://localhost:3457)
-Local Node.js Server  (started on extension icon click, via native launcher)
-        ├── Spawns:   claude -p --output-format stream-json  (per session)
-        └── Proxies:  http://localhost:11434  (Ollama API)
+Click icon
+    → background.js calls chrome.runtime.connectNative()
+    → Chrome launches native-host/launcher.js  (~1 second, then exits)
+    → launcher.js spawns node server/index.js  (stays running)
+    → background.js connects to ws://localhost:3457
+    → sidebar opens, talks directly to server from here on
+            ├── Claude sessions: server spawns claude -p per message
+            └── Ollama sessions: server proxies http://localhost:11434
 ```
-
-The native launcher is a minimal native messaging host whose sole job is to start the Node.js server on first use. All ongoing communication happens over WebSocket.
 
 ## Project Structure
 
