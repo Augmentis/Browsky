@@ -27,6 +27,7 @@ wss.on('connection', (ws) => {
     let msg;
     try { msg = JSON.parse(data.toString()); }
     catch { return; }
+    console.log(`→ ${msg.type}`, msg.sessionId || '');
 
     switch (msg.type) {
       case 'new_session': {

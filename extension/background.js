@@ -117,11 +117,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg.source !== 'extension') return false;
 
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(msg.data));
-    sendResponse({ ok: true });
-  } else {
-    sendResponse({ ok: false, error: 'No server connection' });
-  }
+  // Always ensure connection — service worker may have been killed and restarted
+  ensureConnection().then(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg.data));
+      sendResponse({ ok: true });
+    } else {
+      sendResponse({ ok: false, error: 'No server connection' });
+    }
+  });
   return true;
 });

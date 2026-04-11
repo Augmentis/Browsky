@@ -22,7 +22,7 @@ function chat(session, sessionId, content, onChunk) {
     if (s.claudeSessionId) args.push('--resume', s.claudeSessionId);
     args.push(content);
 
-    const proc = spawn('claude', args, { env: { ...process.env, PATH: EXTENDED_PATH } });
+    const proc = spawn('claude', args, { env: { ...process.env, PATH: EXTENDED_PATH }, stdio: ['ignore', 'pipe', 'pipe'] });
     let buffer = '';
 
     proc.stdout.on('data', (data) => {
@@ -35,24 +35,44 @@ function chat(session, sessionId, content, onChunk) {
         try {
           const obj = JSON.parse(line);
           processEvent(obj, s, onChunk);
-        } catch { /* non-JSON line, skip */ }
+        } catch {
+          // Non-JSON — check for auth error surfaced as plain text
+          if (line.includes('not logged in') || line.includes('Please run /login')) {
+            reject(new Error('Not authenticated — run `claude` in your terminal to log in, then restart the server.'));
+          }
+        }
       }
     });
 
+    let stderrOutput = '';
     proc.stderr.on('data', (data) => {
-      console.error('[claude]', data.toString().trim());
+      const text = data.toString().trim();
+      stderrOutput += text;
+      console.error('[claude]', text);
     });
 
     proc.on('close', (code) => {
       if (buffer.trim()) {
         try { processEvent(JSON.parse(buffer), s, onChunk); } catch { }
       }
-      if (code === 0) resolve();
-      else reject(new Error(`claude exited with code ${code}`));
+      if (code === 0) {
+        resolve();
+      } else {
+        // Surface auth errors as readable messages
+        if (stderrOutput.includes('not logged in') || stderrOutput.includes('login') || stderrOutput.includes('401')) {
+          reject(new Error('Not authenticated — run `claude` in your terminal to log in, then restart the server.'));
+        } else {
+          reject(new Error(stderrOutput || `claude exited with code ${code}`));
+        }
+      }
     });
 
     proc.on('error', (err) => {
-      reject(new Error(`Failed to start claude: ${err.message}`));
+      if (err.code === 'ENOENT') {
+        reject(new Error('claude CLI not found — install it from https://claude.ai/code'));
+      } else {
+        reject(new Error(`Failed to start claude: ${err.message}`));
+      }
     });
   });
 }
