@@ -1,4 +1,14 @@
 const { spawn } = require('child_process');
+const os = require('os');
+
+// Extend PATH with common Claude install locations so the subprocess finds it
+const EXTENDED_PATH = [
+  `${os.homedir()}/.local/bin`,
+  `${os.homedir()}/.npm-global/bin`,
+  '/usr/local/bin',
+  '/opt/homebrew/bin',
+  process.env.PATH,
+].join(':');
 
 // sessionId -> { claudeSessionId: string | null }
 const state = new Map();
@@ -12,7 +22,7 @@ function chat(session, sessionId, content, onChunk) {
     if (s.claudeSessionId) args.push('--resume', s.claudeSessionId);
     args.push(content);
 
-    const proc = spawn('claude', args, { env: { ...process.env } });
+    const proc = spawn('claude', args, { env: { ...process.env, PATH: EXTENDED_PATH } });
     let buffer = '';
 
     proc.stdout.on('data', (data) => {
