@@ -4,7 +4,23 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAUNCHER="$SCRIPT_DIR/native-host/launcher.js"
 MANIFEST_TEMPLATE="$SCRIPT_DIR/native-host/com.augmentis.browsky.json"
-CHROME_HOSTS="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+
+# ── OS-specific native messaging host path ────────────────────────────────────
+case "$(uname -s)" in
+  Darwin)
+    CHROME_HOSTS="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+    ;;
+  Linux)
+    CHROME_HOSTS="$HOME/.config/google-chrome/NativeMessagingHosts"
+    # Chromium fallback
+    [ -d "$HOME/.config/chromium" ] && CHROME_HOSTS="$HOME/.config/chromium/NativeMessagingHosts"
+    ;;
+  *)
+    echo "Unsupported OS: $(uname -s)"
+    exit 1
+    ;;
+esac
+
 MANIFEST_DEST="$CHROME_HOSTS/com.augmentis.browsky.json"
 
 EXTENSION_ID="${1:-EXTENSION_ID}"
